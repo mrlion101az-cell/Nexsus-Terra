@@ -1,0 +1,88 @@
+package com.nexusuniverse.terra.command;
+
+import com.nexusuniverse.terra.generation.BlockPlacementTask;
+import com.nexusuniverse.terra.generation.TerrainGenerator;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+
+public class NexusTerraCommand implements CommandExecutor {
+
+    /** Hard cap on requestable radius -- block count scales with radius^2,
+     *  and both the free Overpass/Elevation APIs and raw placement volume
+     *  need a sane ceiling for v1. Raise this once self-hosted data
+     *  sources are in place. */
+    private static final int MAX_RADIUS_METERS = 300;
+    private static final int PLACEMENTS_PER_TICK = 2000;
+
+    private final JavaPlugin plugin;
+    private final TerrainGenerator terrainGenerator;
+
+    public NexusTerraCommand(JavaPlugin plugin, TerrainGenerator terrainGenerator) {
+        this.plugin = plugin;
+        this.terrainGenerator = terrainGenerator;
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Component.text("This command must be run in-game.", NamedTextColor.RED));
+            return true;
+        }
+
+        if (args.length < 2 || !args[0].equalsIgnoreCase("generate")) {
+            sender.sendMessage(Component.text("Usage: /nexusterra generate <lat> <lon> [radiusMeters]", NamedTextColor.YELLOW));
+            return true;
+        }
+
+        double lat, lon;
+        int radius = 150;
+        try {
+            lat = Double.parseDouble(args[1]);
+            lon = Double.parseDouble(args[2]);
+            if (args.length >= 4) {
+                radius = Integer.parseInt(args[3]);
+            }
+        } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+            sender.sendMessage(Component.text("Usage: /nexusterra generate <lat> <lon> [radiusMeters]", NamedTextColor.YELLOW));
+            return true;
+        }
+
+        if (radius > MAX_RADIUS_METERS) {
+            sender.sendMessage(Component.text(
+                    "Radius capped at " + MAX_RADIUS_METERS + "m for now -- block count scales with radius squared, "
+                            + "and the free public data sources this v1 uses aren't built for larger single requests.",
+                    NamedTextColor.RED));
+            return true;
+        }
+
+        int worldBaseX = player.getLocation().getBlockX();
+        int worldBaseY = player.getLocation().getBlockY();
+        int worldBaseZ = player.getLocation().getBlockZ();
+
+        player.sendMessage(Component.text(
+                "Fetching real-world data for (" + lat + ", " + lon + "), radius " + radius + "m... this may take a moment.",
+                NamedTextColor.AQUA));
+
+        terrainGenerator.generate(lat, lon, radius, worldBaseY)
+                .thenAccept(placements -> {
+                    player.sendMessage(Component.text(
+                            "Data received -- placing " + placements.size() + " block(s) now.",
+                            NamedTextColor.GREEN));
+                    new BlockPlacementTask(player.getWorld(), worldBaseX, worldBaseZ, placements, player, PLACEMENTS_PER_TICK)
+                            .runTaskTimer(plugin, 0L, 1L);
+                })
+                .exceptionally(ex -> {
+                    plugin.getLogger().warning("[NexusTerra] Generation failed: " + ex.getMessage());
+                    player.sendMessage(Component.text("Generation failed -- check console for details.", NamedTextColor.RED));
+                    return null;
+                });
+
+        return true;
+    }
+}
