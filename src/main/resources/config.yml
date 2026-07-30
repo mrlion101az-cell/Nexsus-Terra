@@ -1,0 +1,60 @@
+# NexusTerra configuration
+#
+# Every value here is read fresh each time /nexusterra generate runs,
+# so you can retune the look of generated cities without restarting
+# the server.
+
+generation:
+  # Hard cap on the radius a player may request, in metres. Block count
+  # grows with the square of this, and the free public data sources this
+  # plugin uses are not built for very large single requests. Raise it
+  # once you are running self-hosted Overpass and Open-Elevation.
+  max-radius-metres: 300
+  default-radius-metres: 150
+  # Block changes applied per server tick while building. Higher finishes
+  # faster but is more likely to be felt as lag on weaker hardware.
+  placements-per-tick: 2000
+  # How far above the new ground level to strip pre-existing world
+  # (trees, hillsides, old builds) before generating.
+  clear-height: 24
+  clear-checks-per-tick: 12000
+  # Spacing of the elevation sample grid, in blocks. Smaller means more
+  # faithful terrain but many more API points to fetch.
+  elevation-sample-step: 8
+
+buildings:
+  # Used when OSM has neither a height nor a building:levels tag.
+  default-wall-height: 8
+  blocks-per-level: 4
+  max-wall-height: 140
+  # Windows: opening width, and how far apart openings sit along a wall.
+  window-width: 2
+  window-spacing: 5
+  # Glazed shopfronts on the ground storey of commercial buildings.
+  shopfronts: true
+  # HVAC units, stairwell housings and antenna masts on flat roofs.
+  rooftop-details: true
+  # Gabled roofs on houses and other small buildings.
+  pitched-roofs: true
+
+roads:
+  sidewalks: true
+  # Minimum carriageway width that gets a pavement either side.
+  sidewalk-min-road-width: 4
+  centre-markings: true
+  # Minimum carriageway width that gets dashed centre lines.
+  centre-marking-min-width: 7
+  lamp-posts: true
+  lamp-spacing: 11
+  # Height a bridge deck is lifted above the highest ground it spans.
+  bridge-clearance: 6
+  # Roads tagged tunnel=yes are skipped rather than carved through hills.
+  skip-tunnels: true
+
+features:
+  water: true
+  landuse: true
+  railways: true
+  barriers: true
+  trees: true
+  bridges: true
