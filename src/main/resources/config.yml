@@ -1,0 +1,109 @@
+# NexusTerra configuration
+#
+# Every value here is read fresh each time /nexusterra generate runs,
+# so you can retune the look of generated cities without restarting
+# the server.
+
+generation:
+  # Hard cap on the radius a player may request, in metres. Block count grows
+  # with the square of this -- 1000m is roughly 11x the block volume of the
+  # old 300m default. As of this version the elevation sampling automatically
+  # coarsens itself at larger radii (see elevation-sample-step below) so a
+  # 1000m generation stays in the same rough time ballpark as 300m used to,
+  # but the actual BLOCK PLACEMENT phase (terrain + roads + buildings) still
+  # scales with area and will take noticeably longer -- expect it, it's not
+  # stuck. If it feels too slow, raise placements-per-tick and
+  # clear-checks-per-tick below (more work per tick = faster overall, more
+  # felt per-tick cost). Very dense city cores (Manhattan-scale) may still
+  # push against the free Overpass endpoints' practical limits at 1000m+;
+  # if a huge generation in a very dense area comes back empty or times out,
+  # try a smaller radius for that specific spot.
+  max-radius-metres: 1000
+  default-radius-metres: 150
+  # Block changes applied per server tick while building. Higher finishes
+  # faster but is more likely to be felt as lag on weaker hardware. Consider
+  # raising this if you're regularly generating at large radii.
+  placements-per-tick: 2000
+  # How far above the new ground level to strip pre-existing world
+  # (trees, hillsides, old builds) before generating.
+  clear-height: 24
+  clear-checks-per-tick: 12000
+  # Spacing of the elevation sample grid, in blocks, at or below ~480m radius (radius/60 works
+  # out to 8 right around there). Smaller means more faithful terrain but many more API points
+  # to fetch. Above that, this is only a floor, not the actual value used -- the step scales up
+  # continuously with radius (roughly radius/60, capped at 32) so the elevation fetch itself
+  # doesn't become the bottleneck at a large radius. This can't be disabled from config since
+  # it's what keeps a 1000m+ request from taking an unreasonably long time against the free
+  # Open-Elevation API. A separate smoothing pass over the height data (not configurable, always
+  # on) is what keeps a coarser step from actually looking coarse in the generated terrain.
+  elevation-sample-step: 8
+
+buildings:
+  # Used when OSM has neither a height nor a building:levels tag.
+  default-wall-height: 8
+  blocks-per-level: 4
+  max-wall-height: 140
+  # Windows: opening width, and how far apart openings sit along a wall.
+  window-width: 2
+  window-spacing: 5
+  # Glazed shopfronts on the ground storey of commercial buildings.
+  shopfronts: true
+  # HVAC units, stairwell housings and antenna masts on flat roofs.
+  rooftop-details: true
+  # Gabled roofs on houses and other small buildings.
+  pitched-roofs: true
+  # Structural floor slabs at every storey above the ground floor, plus an optional
+  # carpet rug patch near the centre of each one.
+  interior-floors: true
+  # A single small furniture cluster per floor, picked by building category (kitchen/
+  # bedroom/living-room cycle for houses and apartments, office/stockroom/workshop/altar
+  # for everything else). This does NOT build interior walls or rooms -- see the comment
+  # at the top of InteriorStyle.java for why that's out of scope for now.
+  interior-furniture: true
+  # Vertical drainpipe/service-line seams down the wall face -- iron bars on most
+  # buildings, a thin copper rod line (via stacked lightning rods) on others, and
+  # roughly a quarter of buildings get none, for street-to-street variety.
+  pipes: true
+
+roads:
+  sidewalks: true
+  # Minimum carriageway width that gets a pavement either side.
+  sidewalk-min-road-width: 4
+  centre-markings: true
+  # Minimum carriageway width that gets dashed centre lines.
+  centre-marking-min-width: 7
+  lamp-posts: true
+  lamp-spacing: 11
+  # Named-road signs, placed once per tagged road segment.
+  street-signs: true
+  # Wooden utility poles along sidewalks, spaced further apart than lamp posts.
+  telephone-poles: true
+  telephone-pole-spacing: 20
+  # Pole-mounted signal heads at genuine multi-way road intersections.
+  traffic-lights: true
+  # Park benches along sidewalks, spaced independently of lamp posts (occasional
+  # overlap with a lamp post is fine -- that's realistic street furniture placement).
+  benches: true
+  bench-spacing: 15
+  # Small planter boxes along sidewalks, out of phase with both lamps and benches.
+  planters: true
+  # White stripe crossings at genuine multi-way intersections (reuses the same
+  # detection as traffic lights). Orientation is a best guess, not computed from
+  # real road direction -- see the comment above the crosswalk code for why -- but
+  # painting is always strictly confined to actual road cells.
+  crosswalks: true
+  # Height a bridge deck is lifted above the highest ground it spans.
+  bridge-clearance: 6
+  # Roads tagged tunnel=yes are skipped rather than carved through hills.
+  skip-tunnels: true
+
+features:
+  water: true
+  landuse: true
+  railways: true
+  barriers: true
+  trees: true
+  bridges: true
+  # Small circular fountains placed at the centre of sufficiently large
+  # park/plaza/square landuse polygons.
+  fountains: true
